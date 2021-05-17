@@ -1,5 +1,7 @@
 "use strict";
 
+const {NotFoundError} = require('../expressError');
+const Message = require('./message');
 /** User of the site. */
 
 class User {
@@ -56,6 +58,11 @@ class User {
    * [{username, first_name, last_name}, ...] */
 
   static async all() {
+    const results = db.query(`
+      SELECT username, first_name, last_name
+          FROM users`);
+
+    return results.rows;
   }
 
   /** Get: get user by username
@@ -68,6 +75,17 @@ class User {
    *          last_login_at } */
 
   static async get(username) {
+    const result = db.query(`
+      SELECT username, first_name, last_name, phone, join_at, last_login_at
+          FROM users
+          WHERE username = $1`, [username]);
+
+    const user = result.rows[0];    
+
+    if(!user) {
+      throw new NotFoundError(`Not Found ${username}`);
+    }
+    return user
   }
 
   /** Return messages from this user.
@@ -79,6 +97,25 @@ class User {
    */
 
   static async messagesFrom(username) {
+    const results = db.query(`
+      SELECT id
+      FROM messages
+      WHERE from_user = $1`, [username]);
+    
+    const messageIDs = results.rows[0];
+
+    const messagesData = messageIDs.map( id => Message.get(id));
+
+    const messageResponses = messagesData.map(m => 
+      {
+        m.id, 
+        m.to_user,
+        m.body, 
+        m.sent_at, 
+        m.read_at
+      }); 
+
+      return messageResponses;
   }
 
   /** Return messages to this user.
@@ -90,6 +127,25 @@ class User {
    */
 
   static async messagesTo(username) {
+    const results = db.query(`
+      SELECT id
+      FROM messages
+      WHERE from_user = $1`, [username]);
+    
+    const messageIDs = results.rows[0];
+
+    const messagesData = messageIDs.map( id => Message.get(id));
+
+    const messageResponses = messagesData.map(m => 
+      {
+        m.id, 
+        m.from_user,
+        m.body, 
+        m.sent_at, 
+        m.read_at
+      }); 
+
+      return messageResponses;
   }
 }
 
