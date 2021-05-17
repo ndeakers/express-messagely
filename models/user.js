@@ -127,6 +127,25 @@ class User {
    */
 
   static async messagesTo(username) {
+    const results = db.query(`
+      SELECT id
+      FROM messages
+      WHERE from_user = $1`, [username]);
+    
+    const messageIDs = results.rows[0];
+
+    const messagesData = messageIDs.map( id => Message.get(id));
+
+    const messageResponses = messagesData.map(m => 
+      {
+        m.id, 
+        m.from_user,
+        m.body, 
+        m.sent_at, 
+        m.read_at
+      }); 
+
+      return messageResponses;
   }
 }
 
