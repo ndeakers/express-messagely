@@ -3,6 +3,7 @@
 const Router = require("express").Router;
 const router = new Router();
 const User = require('../models/user');
+const { ensureCorrectUser } = require("../middleware/auth");
 
 
 /** GET / - get list of users.
@@ -11,13 +12,10 @@ const User = require('../models/user');
  *
  **/
 
-router.get('/', async function (req, res, next){
-  if (res.locals.user === undefined) {
-    throw new UnauthorizedError("Please login to see users");
-  }
+router.get('/', async function (req, res, next) {
   const users = await User.all();
 
-  return res.json({users});
+  return res.json({ users });
 });
 
 /** GET /:username - get detail of users.
@@ -26,16 +24,10 @@ router.get('/', async function (req, res, next){
  *
  **/
 
-router.get('/:username', async function (req, res, next){
-  const username = res.locals.user.username;
+router.get('/:username', ensureCorrectUser, async function (req, res, next) {
+  const user = await User.get(req.params.username);
 
-  if(username !== req.params.username) {
-    throw new UnauthorizedError("Only user can access their user data");
-  }
-
-  const user = await User.get(username);
-
-  return res.json({user});
+  return res.json({ user });
 });
 
 /** GET /:username/to - get messages to user
@@ -47,16 +39,10 @@ router.get('/:username', async function (req, res, next){
  *                 from_user: {username, first_name, last_name, phone}}, ...]}
  *
  **/
-router.get('/:username/to', async function (req, res, next){
-  const username = res.locals.user.username;
+router.get('/:username/to', ensureCorrectUser, async function (req, res, next) {
+  const messages = await User.messagesTo(req.params.username);
 
-  if(username !== req.params.username) {
-    throw new UnauthorizedError("Only user can access their to messages");
-  }
-
-  const messages = await User.messagesTo(username);
-
-  return res.json({messages});
+  return res.json({ messages });
 });
 
 /** GET /:username/from - get messages from user
@@ -69,16 +55,10 @@ router.get('/:username/to', async function (req, res, next){
  *
  **/
 
-router.get('/:username/from', async function (req, res, next){
-  const username = res.locals.user.username;
+router.get('/:username/from', ensureCorrectUser, async function (req, res, next) {
+  const messages = await User.messagesFrom(req.params.username);
 
-  if(username !== req.params.username) {
-    throw new UnauthorizedError("Only user can access their from messages");
-  }
-
-  const messages = await User.messagesFrom(username);
-
-  return res.json({messages});
+  return res.json({ messages });
 });
 
 module.exports = router;

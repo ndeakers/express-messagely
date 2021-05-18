@@ -17,14 +17,10 @@ const Message = require('../models/message');
  *
  **/
 router.get('/:id', async function (req, res, next) {
-  if (res.locals.user === undefined) {
-    throw new UnauthorizedError("Please login to see message");
-  }
-
   const username = res.locals.user.username;
   const message = await Message.get(req.params.id);
 
-  if (username !== message.from_user.username && username !== message.from_user.username) {
+  if (username !== message.from_user.username && username !== message.to_user.username) {
     throw new UnauthorizedError("Unauthorized to see this message");
   }
 
@@ -38,15 +34,13 @@ router.get('/:id', async function (req, res, next) {
  *   {message: {id, from_username, to_username, body, sent_at}}
  *
  **/
-router.post('/', function (req, res, next) {
-  const user = res.locals.user;
-  if (user === undefined) {
-    throw new UnauthorizedError("Please login to send message");
-  }
+router.post('/', async function (req, res, next) {
+  const from_username = res.locals.user.username;
 
   const { to_username, body } = req.body;
 
-  const message = Message.create({ from_username: user.username, to_username, body });
+  const message = await Message.create({ from_username, to_username, body });
+  console.log("message created", message);
 
   return res.json({ message });
 });
@@ -59,19 +53,17 @@ router.post('/', function (req, res, next) {
  *
  **/
 
-router.post('/:id/read', function (req, res, next) {
-  const user = res.locals.user;
-  if (user === undefined) {
-    throw new UnauthorizedError("Please login to read message");
-  }
-  const messageID = req.params.id
+router.post('/:id/read', async function (req, res, next) {
+  const username = res.locals.user.username;
 
-  const message = Message.get(messageID);
-  if (user.username !== message.to_user.username) {
+  const messageID = req.params.id;
+
+  const message = await Message.get(messageID);
+  if (username !== message.to_user.username) {
     throw new UnauthorizedError("Unauthorized to mark message as read");
   }
 
-  const messageRead = Message.markRead(messageID);
+  const messageRead = await Message.markRead(messageID);
 
   return res.json({ message: messageRead });
 });
