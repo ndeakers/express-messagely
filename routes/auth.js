@@ -12,9 +12,9 @@ const {UnauthorizedError, BadRequestError} = require('../expressError');
 /** POST /login: {username, password} => {token} */
 router.post('/login', async function (req, res, next) {
   const { username, password } = req.body;
-  const authenticated = await User.authenticate(username, password);
+  const isAuthenticated = await User.authenticate(username, password);
 
-  if(authenticated) {
+  if(isAuthenticated === true) {
     const token = jwt.sign({username}, SECRET_KEY);
     User.updateLoginTimestamp(username);
     return res.json({token});
