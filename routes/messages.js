@@ -2,6 +2,7 @@
 
 const Router = require("express").Router;
 const router = new Router();
+const Message = require('../models/message');
 
 /** GET /:id - get detail of message.
  *
@@ -15,6 +16,20 @@ const router = new Router();
  * Makes sure that the currently-logged-in users is either the to or from user.
  *
  **/
+router.get('/:id', async function (req, res, next) {
+  if (res.locals.user === undefined) {
+    throw new UnauthorizedError("Please login to see message");
+  }
+
+  const username = res.locals.user.username;
+  const message = await Message.get(req.params.id);
+
+  if (username !== message.from_user.username && username !== message.from_user.username) {
+    throw new UnauthorizedError("Unauthorized to see this message");
+  }
+
+  return res.json({ message });
+});
 
 
 /** POST / - post message.
@@ -23,7 +38,18 @@ const router = new Router();
  *   {message: {id, from_username, to_username, body, sent_at}}
  *
  **/
+router.post('/', function (req, res, next) {
+  const user = res.locals.user;
+  if (user === undefined) {
+    throw new UnauthorizedError("Please login to send message");
+  }
 
+  const { to_username, body } = req.body;
+
+  const message = Message.create({ from_username: user.username, to_username, body });
+
+  return res.json({ message });
+});
 
 /** POST/:id/read - mark message as read:
  *
@@ -33,5 +59,21 @@ const router = new Router();
  *
  **/
 
+router.post('/:id/read', function (req, res, next) {
+  const user = res.locals.user;
+  if (user === undefined) {
+    throw new UnauthorizedError("Please login to read message");
+  }
+  const messageID = req.params.id
+
+  const message = Message.get(messageID);
+  if (user.username !== message.to_user.username) {
+    throw new UnauthorizedError("Unauthorized to mark message as read");
+  }
+
+  const messageRead = Message.markRead(messageID);
+
+  return res.json({ message: messageRead });
+});
 
 module.exports = router;
