@@ -23,6 +23,7 @@ class User {
           RETURNING username, password, first_name, last_name, phone`,
       [username, hashedPassword, first_name, last_name, phone]
     )
+    console.log("REGISTER FUNCTION RETURNS", result.rows[0])
     return result.rows[0];
 
   }
