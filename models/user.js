@@ -29,7 +29,6 @@ class User {
   }
 
   /** Authenticate: is username/password valid? Returns boolean.
-   * TODO: what to do if password is entered incorrectly
    */
 
   static async authenticate(username, password) {
@@ -41,7 +40,7 @@ class User {
 
     const user = result.rows[0];
     if (user) {
-      if (await bcrypt.compare(password, user.password) === true) {
+      if (await bcrypt.compare(password, user.password) === true) { // return this expression
         return true;
       }
     }
@@ -49,11 +48,10 @@ class User {
   }
 
   /** Update last_login_at for user
-   * TODO decide when to call this
    */
 
   static async updateLoginTimestamp(username) {
-    await db.query(`Update users
+    await db.query(`UPDATE users
                 SET last_login_at=current_timestamp
                 WHERE username = $1`, [username]);
   }
@@ -63,9 +61,9 @@ class User {
 
   static async all() {
     const results = await db.query(`
-      SELECT username, first_name, last_name
+      SELECT username, first_name, last_name 
           FROM users`);
-
+    // add orderby
     return results.rows;
   }
 
@@ -102,20 +100,30 @@ class User {
 
   static async messagesFrom(username) {
     const results = await db.query(`
-    SELECT id
-    FROM messages
-    WHERE from_username = $1`, [username]);
+    SELECT m.id,
+    t.first_name AS to_first_name,
+    t.last_name AS to_last_name,
+    t.phone AS to_phone,
+    m.to_username,
+    m.body,
+    m.sent_at,
+    m.read_at
+    FROM messages AS m
+    JOIN users AS t ON m.to_username = t.username
+    WHERE m.from_username = $1`, [username]);
 
-    const messageIDs = results.rows;
-    console.log("reults.rows for messagesTo", messageIDs);
+    const messagesData = results.rows;
 
-    const messagesP = messageIDs.map(m => Message.get(m.id));
-    const messagesData = await Promise.all(messagesP);
-    console.log("messagesData", messagesData);
+
 
     const messageResponses = messagesData.map(m => ({
       id: m.id,
-      to_user: m.to_user,
+      to_user: {
+        username: m.to_username,
+        first_name: m.to_first_name,
+        last_name: m.to_last_name,
+        phone: m.to_phone,
+      },
       body: m.body,
       sent_at: m.sent_at,
       read_at: m.read_at
@@ -124,23 +132,40 @@ class User {
     return messageResponses;
   }
 
+  /** Return messages to this user.
+   *
+   * [{id, from_user, body, sent_at, read_at}]
+   *
+   * where from_user is
+   *   {username, first_name, last_name, phone}
+   */
 
   static async messagesTo(username) {
     const results = await db.query(`
-      SELECT id
-      FROM messages
-      WHERE to_username = $1`, [username]);
+    SELECT m.id,
+    f.first_name AS from_first_name,
+    f.last_name AS from_last_name,
+    f.phone AS from_phone,
+    m.from_username,
+    m.body,
+    m.sent_at,
+    m.read_at
+    FROM messages AS m
+    JOIN users AS f ON m.from_username = f.username
+    WHERE m.to_username = $1`, [username]);
 
-    const messageIDs = results.rows;
-    console.log("reults.rows for messagesTo", messageIDs);
 
-    const messagesP = messageIDs.map(m => Message.get(m.id));
-    const messagesData = await Promise.all(messagesP);
-    console.log("messagesData", messagesData);
+
+    const messagesData = results.rows;
 
     const messageResponses = messagesData.map(m => ({
       id: m.id,
-      from_user: m.from_user,
+      from_user: {
+        username: m.from_username,
+        first_name: m.from_first_name,
+        last_name: m.from_last_name,
+        phone: m.from_phone,
+      },
       body: m.body,
       sent_at: m.sent_at,
       read_at: m.read_at
